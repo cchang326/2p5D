@@ -1,7 +1,7 @@
 // b1 b1 b1 b1 b1
 // 2p5d.cpp : Defines the entry point for the application.
 //
-// master master
+// master master master
 
 #include "stdafx.h"
 #include "2p5d.h"

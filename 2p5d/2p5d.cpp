@@ -158,7 +158,6 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 		hdc = BeginPaint(hWnd, &ps);
 		// TODO: Add any drawing code here...
 		{
-			g_painter.Draw();
 			HBITMAP hbmp = (HBITMAP) SelectObject (g_painter.m_cdc, g_painter.m_hbmp);
 			BitBlt (hdc, 0, 0, g_painter.m_dwWidth, g_painter.m_dwHeight, g_painter.m_cdc, 0, 0, SRCCOPY);
 			SelectObject(g_painter.m_cdc, hbmp);
@@ -171,6 +170,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 		PostQuitMessage(0);
 		break;
 	case WM_TIMER:
+        g_painter.Draw();
 		InvalidateRect(hWnd, NULL, TRUE);
 		break;
 	default:

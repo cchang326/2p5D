@@ -33,6 +33,7 @@ public:
 		memset (m_pCanvas, m_bValue, m_dwWidth * m_dwHeight * m_bmi.bmiHeader.biBitCount/8);
 		DeleteDC(hdc);
 
+        
 		return TRUE;
 	}
 	void Draw ()

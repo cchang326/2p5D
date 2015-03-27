@@ -21,6 +21,9 @@ LRESULT CALLBACK	WndProc(HWND, UINT, WPARAM, LPARAM);
 INT_PTR CALLBACK	About(HWND, UINT, WPARAM, LPARAM);
 
 CPainter g_painter;
+static const int g_width = 1280;
+static const int g_height = 720;
+static const int g_fps = 30;
 
 int APIENTRY _tWinMain(_In_ HINSTANCE hInstance,
                      _In_opt_ HINSTANCE hPrevInstance,
@@ -104,16 +107,23 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
 
    hInst = hInstance; // Store instance handle in our global variable
 
-   hWnd = CreateWindow(szWindowClass, szTitle, WS_OVERLAPPEDWINDOW,
-      CW_USEDEFAULT, 0, CW_USEDEFAULT, 0, NULL, NULL, hInstance, NULL);
+   RECT rect = {0, 0, g_width, g_height};
+   DWORD stype = (WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU);
+   AdjustWindowRect(&rect, stype, TRUE);
+   int winWidth = rect.right - rect.left;
+   int winHeight = rect.bottom - rect.top;
+
+   hWnd = CreateWindow(szWindowClass, szTitle, stype,
+                       CW_USEDEFAULT, 0, winWidth, winHeight,
+                       NULL, NULL, hInstance, NULL);
 
    if (!hWnd)
    {
       return FALSE;
    }
 
-   g_painter.Init(1280, 720, hWnd);
-   SetTimer(hWnd, TIMER_ID, 33, 0);
+   g_painter.Init(g_width, g_height, hWnd);
+   SetTimer(hWnd, TIMER_ID, 1000 / g_fps, 0);
    ShowWindow(hWnd, nCmdShow);
    UpdateWindow(hWnd);
 
@@ -156,22 +166,27 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 		break;
 	case WM_PAINT:
 		hdc = BeginPaint(hWnd, &ps);
-		// TODO: Add any drawing code here...
 		{
-			HBITMAP hbmp = (HBITMAP) SelectObject (g_painter.m_cdc, g_painter.m_hbmp);
-			BitBlt (hdc, 0, 0, g_painter.m_dwWidth, g_painter.m_dwHeight, g_painter.m_cdc, 0, 0, SRCCOPY);
-			SelectObject(g_painter.m_cdc, hbmp);
-		}
-
+			BitBlt(hdc, 0, 0, g_painter.m_dwWidth, g_painter.m_dwHeight, g_painter.m_cdc, 0, 0, SRCCOPY);
+		}   
 
 		EndPaint(hWnd, &ps);
 		break;
+
+    case WM_ERASEBKGND:
+        // This repaints the whole client background, which may cause flickering.
+        // Ignore the message since we're painting the whole client area anyway.
+        break;
+        
 	case WM_DESTROY:
 		PostQuitMessage(0);
 		break;
-	case WM_TIMER:
-        g_painter.Draw();
-		InvalidateRect(hWnd, NULL, TRUE);
+    case WM_TIMER:
+        {
+            g_painter.Draw();
+            RECT rect = {0, 0, g_painter.m_dwWidth, g_painter.m_dwHeight};
+            InvalidateRect(hWnd, &rect, TRUE);
+        }
 		break;
 	default:
 		return DefWindowProc(hWnd, message, wParam, lParam);

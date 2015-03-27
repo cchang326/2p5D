@@ -7,6 +7,7 @@ public:
 		m_cdc(NULL),
 		m_hbmp(NULL)
 	{;}
+
 	~CPainter(){
 		DeleteDC(m_cdc);
 		DeleteObject(m_hbmp);
@@ -28,6 +29,7 @@ public:
 		HDC hdc = GetDC(hwnd);
 		m_cdc = CreateCompatibleDC (hdc); 
 		m_hbmp = CreateDIBSection(hdc, &m_bmi, DIB_RGB_COLORS, (void**)&m_pCanvas, NULL, 0);
+        SelectObject(m_cdc, m_hbmp);
 
 		m_bValue = 0;
 		memset (m_pCanvas, m_bValue, m_dwWidth * m_dwHeight * m_bmi.bmiHeader.biBitCount/8);
@@ -45,11 +47,11 @@ public:
 public:
 	DWORD m_dwWidth;
 	DWORD m_dwHeight;
-	BITMAPINFO m_bmi;
 	HDC m_cdc;
-	HBITMAP m_hbmp;
-	
+    	
 private:
+    BITMAPINFO m_bmi;
+    HBITMAP m_hbmp;
 	BYTE m_bValue;
 	BYTE *m_pCanvas;
 };

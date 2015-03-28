@@ -38,7 +38,10 @@
     <ClCompile Include="2p5d.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="painter.h">
+    <ClCompile Include="parallax.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="parallax.h">
       <Filter>Header Files</Filter>
     </ClCompile>
   </ItemGroup>

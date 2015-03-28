@@ -84,7 +84,8 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="2p5d.cpp" />
-    <ClCompile Include="painter.h" />
+    <ClCompile Include="parallax.h" />
+    <ClCompile Include="parallax.cpp" />
     <ClCompile Include="stdafx.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Create</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Create</PrecompiledHeader>

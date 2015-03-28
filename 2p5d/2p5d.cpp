@@ -20,7 +20,7 @@ BOOL				InitInstance(HINSTANCE, int);
 LRESULT CALLBACK	WndProc(HWND, UINT, WPARAM, LPARAM);
 INT_PTR CALLBACK	About(HWND, UINT, WPARAM, LPARAM);
 
-CPainter g_painter;
+Parallax::CPainter g_painter;
 static const int g_width = 1280;
 static const int g_height = 720;
 static const int g_fps = 30;

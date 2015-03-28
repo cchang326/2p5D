@@ -11,6 +11,17 @@
 // Windows Header Files:
 #include <windows.h>
 
+// GDI+
+#include <objidl.h>
+#include <gdiplus.h>
+using namespace Gdiplus;
+#pragma comment (lib,"Gdiplus.lib")
+
+// STL headers
+#include <vector>
+#include <algorithm>
+
+
 // C RunTime Header Files
 #include <stdlib.h>
 #include <malloc.h>

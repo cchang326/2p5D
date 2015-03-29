@@ -5,6 +5,7 @@
 
 #include "stdafx.h"
 #include "2p5d.h"
+#include "parallax.h"
 
 #define MAX_LOADSTRING 100
 #define TIMER_ID 0
@@ -167,7 +168,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 	case WM_PAINT:
 		hdc = BeginPaint(hWnd, &ps);
 		{
-			BitBlt(hdc, 0, 0, g_painter.m_dwWidth, g_painter.m_dwHeight, g_painter.m_cdc, 0, 0, SRCCOPY);
+            BitBlt(hdc, 0, 0, g_width, g_height, g_painter.m_cdc, 0, 0, SRCCOPY);
 		}   
 
 		EndPaint(hWnd, &ps);
@@ -184,7 +185,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
     case WM_TIMER:
         {
             g_painter.Draw();
-            RECT rect = {0, 0, g_painter.m_dwWidth, g_painter.m_dwHeight};
+            RECT rect = { 0, 0, g_width, g_height };
             InvalidateRect(hWnd, &rect, TRUE);
         }
 		break;

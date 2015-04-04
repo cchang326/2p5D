@@ -233,6 +233,19 @@ LRESULT CALLBACK RenderWinProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lP
 			return DefWindowProc(hWnd, message, wParam, lParam);
 		}
 		break;
+    case WM_LBUTTONDOWN:
+    case WM_MOUSEMOVE:
+        if (wParam == MK_LBUTTON)
+        {
+            int x = GET_X_LPARAM(lParam);
+            int y = GET_Y_LPARAM(lParam);
+            g_painter.updateCameraPos(x - g_width / 2, y - g_height / 2);
+        }
+        break;
+
+    case WM_LBUTTONUP:
+        g_painter.updateCameraPos(0, 0);
+        break;
 	case WM_PAINT:
 		hdc = BeginPaint(hWnd, &ps);
 		{

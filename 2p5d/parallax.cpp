@@ -45,11 +45,11 @@ BOOL CPainter::Init(DWORD width, DWORD height, HWND hwnd)
 void CPainter::loadLayers()
 {
     const wchar_t* layerFiles[] = {
-        L"C:\\test\\gitRepos\\2p5D\\2p5d\\images\\layered\\0_sky.png",
-        L"C:\\test\\gitRepos\\2p5D\\2p5d\\images\\layered\\1_grass.png",
-        L"C:\\test\\gitRepos\\2p5D\\2p5d\\images\\layered\\2_trees.png",
-        L"C:\\test\\gitRepos\\2p5D\\2p5d\\images\\layered\\3_trees.png",
-        L"C:\\test\\gitRepos\\2p5D\\2p5d\\images\\layered\\4_trees.png"
+        L"images\\layers\\0_sky.png",
+        L"images\\layers\\1_grass.png",
+        L"images\\layers\\2_trees.png",
+        L"images\\layers\\3_trees.png",
+        L"images\\layers\\4_trees.png"
     };
     const int layerDepth[] = { 1000, 10, 8, 5, 2 };
     for (int i = 0; i < _countof(layerFiles); i++) {

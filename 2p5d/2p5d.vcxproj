@@ -78,13 +78,13 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="2p5d.h" />
+    <ClInclude Include="parallax.h" />
     <ClInclude Include="Resource.h" />
     <ClInclude Include="stdafx.h" />
     <ClInclude Include="targetver.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="2p5d.cpp" />
-    <ClCompile Include="parallax.h" />
     <ClCompile Include="parallax.cpp" />
     <ClCompile Include="stdafx.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Create</PrecompiledHeader>

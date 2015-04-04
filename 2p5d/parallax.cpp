@@ -79,30 +79,36 @@ void CPainter::loadLayers()
     }
 }
 
+void CPainter::updateCameraPos(int shiftX, int shiftY)
+{
+    m_cameraShift = { shiftX, shiftY };
+}
+
 void CPainter::Draw()
 {
-    COORD camShift = { 0, 0 };
-    m_blender.blendLayers(m_layers, &m_canvas, camShift);
+    m_blender.blendLayers(m_layers, &m_canvas, m_cameraShift);
 }
 
 void CBlender::blendSingleLayer(const PixelMap *pLayer, COORD& offset, PixelMap *pDstImg)
 {
+    if (pLayer->isInverted()) {
+        offset.Y = -offset.Y;
+    }
+
     Rect dstRect(0, 0, pDstImg->width, pDstImg->height);
     Rect srcRect(offset.X, offset.Y, pLayer->width, pLayer->height);
     dstRect.Intersect(srcRect);
     int srcStartX = 0, srcStartY = 0;
     if (offset.X < 0) {
         srcStartX = -offset.X;
-        offset.X = 0;
     }
     if (offset.Y < 0) {
         srcStartY = -offset.Y;
-        offset.Y = 0;
     }
     const BYTE *pSrc = pLayer->getPtr(srcStartX, srcStartY);
     BYTE *pDst = pDstImg->getPtr(dstRect.X, dstRect.Y);
-    for (int y = dstRect.Y; y < dstRect.GetBottom(); y++) {
-        for (int x = dstRect.X; x < dstRect.GetRight(); x++) {
+    for (int y = 0; y < dstRect.Height; y++) {
+        for (int x = 0; x < dstRect.Width; x++) {
             unsigned int s = *(unsigned int*)(&pSrc[x << 2]);
             if (s >> 24) {
                 *(int*)(&pDst[x << 2]) = s;

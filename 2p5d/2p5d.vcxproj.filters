@@ -30,6 +30,9 @@
     <ClInclude Include="2p5d.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="parallax.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="stdafx.cpp">
@@ -40,9 +43,6 @@
     </ClCompile>
     <ClCompile Include="parallax.cpp">
       <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="parallax.h">
-      <Filter>Header Files</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

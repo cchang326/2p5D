@@ -5,8 +5,6 @@ VisualStudioVersion = 12.0.21005.1
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "2p5d", "2p5d\2p5d.vcxproj", "{2686523A-EAED-40D1-8395-6E407F4FB105}"
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "FaceDetector", "facedetector\FaceDetector.vcxproj", "{F8A1E6AB-9228-477D-A9F1-94FB4B033B47}"
-EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Win32 = Debug|Win32
@@ -17,10 +15,6 @@ Global
 		{2686523A-EAED-40D1-8395-6E407F4FB105}.Debug|Win32.Build.0 = Debug|Win32
 		{2686523A-EAED-40D1-8395-6E407F4FB105}.Release|Win32.ActiveCfg = Release|Win32
 		{2686523A-EAED-40D1-8395-6E407F4FB105}.Release|Win32.Build.0 = Release|Win32
-		{F8A1E6AB-9228-477D-A9F1-94FB4B033B47}.Debug|Win32.ActiveCfg = Debug|Win32
-		{F8A1E6AB-9228-477D-A9F1-94FB4B033B47}.Debug|Win32.Build.0 = Debug|Win32
-		{F8A1E6AB-9228-477D-A9F1-94FB4B033B47}.Release|Win32.ActiveCfg = Release|Win32
-		{F8A1E6AB-9228-477D-A9F1-94FB4B033B47}.Release|Win32.Build.0 = Release|Win32
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

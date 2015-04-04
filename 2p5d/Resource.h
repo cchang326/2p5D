@@ -13,6 +13,7 @@
 #define IDI_MY2P5D			107
 #define IDI_SMALL				108
 #define IDC_MY2P5D			109
+#define IDC_TRACKER         110
 #define IDC_MYICON				2
 #ifndef IDC_STATIC
 #define IDC_STATIC				-1

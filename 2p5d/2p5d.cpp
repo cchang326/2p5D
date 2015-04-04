@@ -6,19 +6,29 @@
 #include "stdafx.h"
 #include "2p5d.h"
 #include "parallax.h"
+#include "windowsx.h"
 
 #define MAX_LOADSTRING 100
 #define TIMER_ID 0
+
+#define TRACKER_WIDTH  300
+#define TRACKER_HEIGHT 300
 
 // Global Variables:
 HINSTANCE hInst;								// current instance
 TCHAR szTitle[MAX_LOADSTRING];					// The title bar text
 TCHAR szWindowClass[MAX_LOADSTRING];			// the main window class name
+TCHAR szTrackerWinClass[MAX_LOADSTRING];        // TRACKER WINDOW CLASS NAME
+HWND hwndRender = NULL;
+HWND hwndTracker = NULL;
 
 // Forward declarations of functions included in this code module:
-ATOM				MyRegisterClass(HINSTANCE hInstance);
+ATOM				RegisterRenderWinClass(HINSTANCE hInstance);
+ATOM				RegisterTrackerWinClass(HINSTANCE hInstance);
 BOOL				InitInstance(HINSTANCE, int);
-LRESULT CALLBACK	WndProc(HWND, UINT, WPARAM, LPARAM);
+BOOL				InitTrackerInstance(HINSTANCE, int);
+LRESULT CALLBACK	RenderWinProc(HWND, UINT, WPARAM, LPARAM);
+LRESULT CALLBACK	TrackerWinProc(HWND, UINT, WPARAM, LPARAM);
 INT_PTR CALLBACK	About(HWND, UINT, WPARAM, LPARAM);
 
 Parallax::CPainter g_painter;
@@ -41,10 +51,12 @@ int APIENTRY _tWinMain(_In_ HINSTANCE hInstance,
 	// Initialize global strings
 	LoadString(hInstance, IDS_APP_TITLE, szTitle, MAX_LOADSTRING);
 	LoadString(hInstance, IDC_MY2P5D, szWindowClass, MAX_LOADSTRING);
-	MyRegisterClass(hInstance);
+    LoadString(hInstance, IDC_TRACKER, szTrackerWinClass, MAX_LOADSTRING);
+	RegisterRenderWinClass(hInstance);
+    RegisterTrackerWinClass(hInstance);
 		
 	// Perform application initialization:
-	if (!InitInstance (hInstance, nCmdShow))
+	if (!InitInstance (hInstance, nCmdShow) || !InitTrackerInstance(hInstance, nCmdShow))
 	{
 		return FALSE;
 	}
@@ -67,18 +79,18 @@ int APIENTRY _tWinMain(_In_ HINSTANCE hInstance,
 
 
 //
-//  FUNCTION: MyRegisterClass()
+//  FUNCTION: RegisterRenderWinClass()
 //
 //  PURPOSE: Registers the window class.
 //
-ATOM MyRegisterClass(HINSTANCE hInstance)
+ATOM RegisterRenderWinClass(HINSTANCE hInstance)
 {
 	WNDCLASSEX wcex;
 
 	wcex.cbSize = sizeof(WNDCLASSEX);
 
 	wcex.style			= CS_HREDRAW | CS_VREDRAW;
-	wcex.lpfnWndProc	= WndProc;
+	wcex.lpfnWndProc	= RenderWinProc;
 	wcex.cbClsExtra		= 0;
 	wcex.cbWndExtra		= 0;
 	wcex.hInstance		= hInstance;
@@ -90,6 +102,32 @@ ATOM MyRegisterClass(HINSTANCE hInstance)
 	wcex.hIconSm		= LoadIcon(wcex.hInstance, MAKEINTRESOURCE(IDI_SMALL));
 
 	return RegisterClassEx(&wcex);
+}
+
+//
+//  FUNCTION: RegisterTrackerWinClass()
+//
+//  PURPOSE: Registers the window class.
+//
+ATOM RegisterTrackerWinClass(HINSTANCE hInstance)
+{
+    WNDCLASSEX wcex;
+
+    wcex.cbSize = sizeof(WNDCLASSEX);
+
+    wcex.style = CS_HREDRAW | CS_VREDRAW;
+    wcex.lpfnWndProc = TrackerWinProc;
+    wcex.cbClsExtra = 0;
+    wcex.cbWndExtra = 0;
+    wcex.hInstance = hInstance;
+    wcex.hIcon = LoadIcon(hInstance, MAKEINTRESOURCE(IDI_MY2P5D));
+    wcex.hCursor = LoadCursor(NULL, IDC_CROSS);
+    wcex.hbrBackground = (HBRUSH)(COLOR_WINDOW + 1);
+    wcex.lpszMenuName = NULL;
+    wcex.lpszClassName = szTrackerWinClass;
+    wcex.hIconSm = LoadIcon(wcex.hInstance, MAKEINTRESOURCE(IDI_SMALL));
+
+    return RegisterClassEx(&wcex);
 }
 
 //
@@ -128,11 +166,41 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
    ShowWindow(hWnd, nCmdShow);
    UpdateWindow(hWnd);
 
+   hwndRender = hWnd;
+
    return TRUE;
 }
 
+BOOL InitTrackerInstance(HINSTANCE hInstance, int nCmdShow)
+{
+    HWND hWnd;
+
+    hInst = hInstance; // Store instance handle in our global variable
+
+    RECT rect = { 0, 0, TRACKER_WIDTH, TRACKER_HEIGHT };
+    DWORD stype = (WS_CAPTION);
+    AdjustWindowRect(&rect, stype, TRUE);
+    int winWidth = rect.right - rect.left;
+    int winHeight = rect.bottom - rect.top;
+
+    hWnd = CreateWindow(szTrackerWinClass, _T("Tracker"), stype,
+        CW_USEDEFAULT, 0, winWidth, winHeight,
+        NULL, NULL, hInstance, NULL);
+
+    if (!hWnd) {
+        return FALSE;
+    }
+
+    ShowWindow(hWnd, nCmdShow);
+    UpdateWindow(hWnd);
+
+    hwndTracker = hWnd;
+
+    return TRUE;
+}
+
 //
-//  FUNCTION: WndProc(HWND, UINT, WPARAM, LPARAM)
+//  FUNCTION: RenderWinProc(HWND, UINT, WPARAM, LPARAM)
 //
 //  PURPOSE:  Processes messages for the main window.
 //
@@ -141,7 +209,7 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
 //  WM_DESTROY	- post a quit message and return
 //
 //
-LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
+LRESULT CALLBACK RenderWinProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
 	int wmId, wmEvent;
 	PAINTSTRUCT ps;
@@ -193,6 +261,52 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 		return DefWindowProc(hWnd, message, wParam, lParam);
 	}
 	return 0;
+}
+
+// todo: attach tracker window to render window.
+// use SetWindowPos and GetWindowRect.
+void AttachTrackerToRender()
+{
+    RECT rectRender = { 0 };
+}
+
+LRESULT CALLBACK TrackerWinProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
+{
+    PAINTSTRUCT ps;
+    HDC hdc;
+
+    switch (message) {
+    case WM_CREATE:
+
+        return DefWindowProc(hWnd, message, wParam, lParam);
+        break;
+    case WM_PAINT:
+        hdc = BeginPaint(hWnd, &ps);
+        
+        EndPaint(hWnd, &ps);
+        break;
+
+    case WM_LBUTTONDOWN:
+    case WM_MOUSEMOVE:
+        if (wParam == MK_LBUTTON) 
+        {
+            int x = GET_X_LPARAM(lParam);
+            int y = GET_Y_LPARAM(lParam);
+            g_painter.updateCameraPos(x - TRACKER_WIDTH / 2, y - TRACKER_HEIGHT / 2);        
+        }
+        break;
+
+    case WM_LBUTTONUP:
+        g_painter.updateCameraPos(0, 0);
+        break;
+
+    case WM_DESTROY:
+        PostQuitMessage(0);
+        break;
+    default:
+        return DefWindowProc(hWnd, message, wParam, lParam);
+    }
+    return 0;
 }
 
 // Message handler for about box.

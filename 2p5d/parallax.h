@@ -1,5 +1,3 @@
-#pragma once
-
 #include "stdafx.h"
 
 namespace Parallax  {
@@ -19,13 +17,18 @@ struct PixelMap {
     
     BYTE* getPtr(int x, int y) const
     {
-        return pixels + y * stride + x;
+        return pixels + y * stride + x * (bpp >> 3);
     }
 
     void invert()
     {
         pixels = getPtr(0, height - 1);
         stride = -stride;
+    }
+
+    bool isInverted() const
+    {
+        return stride < 0;
     }
 };
 
@@ -42,6 +45,10 @@ struct GdiPlusBmp {
 
 class CBlender {
 public:
+    CBlender():
+        m_strengthX(1), m_strengthY(1)
+    {}
+
     float getPixelShift1D(int depth, int camShift)
     {
         static const int cameraViewDistance = 1; // distance from camera to view plane.
@@ -51,13 +58,17 @@ public:
     COORD getShift(int depth, const COORD& cameraShift)
     {
         COORD shift = {0};
-        shift.X = (int)getPixelShift1D(depth, cameraShift.X);
-        shift.Y = (int)getPixelShift1D(depth, cameraShift.Y);
+        shift.X = (int)getPixelShift1D(depth, cameraShift.X) * m_strengthX;
+        shift.Y = (int)getPixelShift1D(depth, cameraShift.Y) * m_strengthY;
         return shift;
     }
 
     void blendSingleLayer(const PixelMap *pLayer, COORD& offset, PixelMap *pDst);
     void blendLayers(std::vector<LayerImage>& layers, PixelMap *pDstImg, const COORD& cameraShift);
+
+private:
+    uint32_t m_strengthX;
+    uint32_t m_strengthY;
 };
 
 class CPainter {
@@ -67,6 +78,7 @@ public:
 		m_hbmp(NULL)
 	{
         memset(&m_canvas, 0, sizeof(m_canvas));
+        memset(&m_cameraShift, 0, sizeof(m_cameraShift));
         // Initialize GDI+.
         GdiplusStartupInput gdiplusStartupInput;        
         GdiplusStartup(&m_gdiplusToken, &gdiplusStartupInput, NULL);       
@@ -85,11 +97,14 @@ public:
         GdiplusShutdown(m_gdiplusToken);
 	}
 
-    void loadLayers();
-
     BOOL Init(DWORD width, DWORD height, HWND hwnd);
 
+    void updateCameraPos(int shiftX, int shiftY);
+
     void Draw();
+
+private:
+    void loadLayers();
 	
 public:
 	HDC m_cdc;
@@ -101,6 +116,7 @@ private:
     std::vector<GdiPlusBmp> m_bitmaps;
     std::vector<LayerImage> m_layers;
     ULONG_PTR m_gdiplusToken;
+    COORD m_cameraShift;
 
     CBlender m_blender;
 };

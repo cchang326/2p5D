@@ -29,3 +29,5 @@ using namespace Gdiplus;
 #include <memory.h>
 #include <tchar.h>
 #include <inttypes.h>
+
+#include "capture.h"

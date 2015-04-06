@@ -107,7 +107,10 @@ STDMETHODIMP SampleGrabberCB::OnProcessSample(REFGUID guidMajorMediaType, DWORD 
     DWORD dwSampleSize)
 {
     // Display information about the sample.
-    printf("Sample: start = %I64d, duration = %I64d, bytes = %d\n", llSampleTime, llSampleDuration, dwSampleSize);
+    DBGMSG(L"Sample: start = %I64d, duration = %I64d, bytes = %d\n", llSampleTime, llSampleDuration, dwSampleSize);
+    if (m_procCallback) {
+        m_procCallback(pSampleBuffer, dwSampleSize);
+    }
     return S_OK;
 }
 

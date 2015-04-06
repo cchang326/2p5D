@@ -28,7 +28,10 @@ template <class T> void SafeRelease(T **ppT)
     }
 };
 
+typedef std::function<void(const BYTE * pSampleBuffer, DWORD dwSampleSize)> SampleProcessFunc;
+
 HRESULT LogMediaType(IMFMediaType *pType);
+void DBGMSG(PCWSTR format, ...);
 HRESULT CreateTopology(IMFMediaSource *pSource, IMFActivate *pSinkActivate, IMFTopology **ppTopo);
 HRESULT AddOutputNode(IMFTopology *pTopology, IMFActivate *pActivate, DWORD dwId, IMFTopologyNode **ppNode);
 HRESULT AddSourceNode(IMFTopology *pTopology, IMFMediaSource *pSource, IMFPresentationDescriptor *pPD, IMFStreamDescriptor *pSD, IMFTopologyNode **ppNode);
@@ -38,11 +41,15 @@ HRESULT SetDeviceFormat(IMFMediaSource *pSource, DWORD dwFormatIndex);
 class SampleGrabberCB : public IMFSampleGrabberSinkCallback {
     long m_cRef;
 
-    SampleGrabberCB() : m_cRef(1) {}
+    SampleGrabberCB() : m_cRef(1), m_procCallback(nullptr) {}
 
 public:
     static HRESULT CreateInstance(SampleGrabberCB **ppCB);
-
+    void setSampleProcessCallback(SampleProcessFunc callback)
+    {
+        m_procCallback = callback;
+    }
+    
     // IUnknown methods
     STDMETHODIMP QueryInterface(REFIID iid, void** ppv);
     STDMETHODIMP_(ULONG) AddRef();
@@ -61,6 +68,9 @@ public:
                                  LONGLONG llSampleTime, LONGLONG llSampleDuration, const BYTE * pSampleBuffer,
                                  DWORD dwSampleSize);
     STDMETHODIMP OnShutdown();
+
+private:
+    SampleProcessFunc m_procCallback;
 };
 
 class CMFCamCapture {
@@ -71,6 +81,13 @@ public:
     HRESULT init();
     HRESULT start();
     HRESULT stop();
+
+    void setSampleCallback(SampleProcessFunc callback)
+    {
+        if (m_spSampleGrabber) {
+            m_spSampleGrabber->setSampleProcessCallback(callback);
+        }
+    }
 
 private:
     HRESULT enumVideoDevices();
@@ -87,6 +104,7 @@ private:
     mutable std::mutex m_stateDataMutex;
     std::thread m_captureThread;
 
+    CComPtr<SampleGrabberCB> m_spSampleGrabber;
     CComPtr<IMFMediaSession> m_spSession;  
     CComPtr<IMFMediaSource> m_spSource;
     CComPtr<IMFActivate> m_spSinkActivate;

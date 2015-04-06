@@ -20,7 +20,6 @@ CMFCamCapture::~CMFCamCapture()
 
 HRESULT CMFCamCapture::init()
 {
-    SampleGrabberCB *pCallback = NULL;
     IMFMediaType *pType = NULL;
     HRESULT hr;
 
@@ -36,8 +35,8 @@ HRESULT CMFCamCapture::init()
     CHECK_HR(hr = pType->SetGUID(MF_MT_SUBTYPE, MFVideoFormat_I420));
 
     // Create the sample grabber sink.
-    CHECK_HR(hr = SampleGrabberCB::CreateInstance(&pCallback));
-    CHECK_HR(hr = MFCreateSampleGrabberSinkActivate(pType, pCallback, &m_spSinkActivate));
+    CHECK_HR(hr = SampleGrabberCB::CreateInstance(&m_spSampleGrabber));
+    CHECK_HR(hr = MFCreateSampleGrabberSinkActivate(pType, m_spSampleGrabber, &m_spSinkActivate));
 
     // To run as fast as possible, set this attribute (requires Windows 7):
     CHECK_HR(hr = m_spSinkActivate->SetUINT32(MF_SAMPLEGRABBERSINK_IGNORE_CLOCK, TRUE));
@@ -51,8 +50,7 @@ HRESULT CMFCamCapture::init()
 
     CHECK_HR(hr = setupMfSession());
     
-done:    
-    SafeRelease(&pCallback);
+done:
     SafeRelease(&pType);
     return hr;
 }

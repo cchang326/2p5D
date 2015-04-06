@@ -78,6 +78,7 @@
   <ItemGroup>
     <ClCompile Include="capture.cpp" />
     <ClCompile Include="mfdebug.cpp" />
+    <ClCompile Include="mfutils.cpp" />
     <ClCompile Include="sampleGrabber.cpp" />
   </ItemGroup>
   <ItemGroup>

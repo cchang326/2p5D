@@ -1,26 +1,99 @@
 #include "capture.h"
 
-HRESULT ChooseCaptureFormats(IMFMediaSource *pSource);
-HRESULT SetDeviceFormat(IMFMediaSource *pSource, DWORD dwFormatIndex);
-HRESULT CreateVideoDeviceSource(IMFMediaSource **ppSource);
+CMFCamCapture::CMFCamCapture() :
+    m_videoDeviceId(2)
+{
+}
 
-bool SelectMediaType(IMFMediaSource *pSource, IMFMediaType *pType);
+CMFCamCapture::~CMFCamCapture()
+{
+    stop();
+    if (m_spSource) {
+        m_spSource->Shutdown();
+    }
+    if (m_spSession) {
+        m_spSession->Shutdown();
+    }
+    MFShutdown();
+    CoUninitialize();
+}
 
-HRESULT CreateCaptureSource(IMFMediaSource **ppSource)
+HRESULT CMFCamCapture::init()
+{
+    SampleGrabberCB *pCallback = NULL;
+    IMFMediaType *pType = NULL;
+    HRESULT hr;
+
+    CHECK_HR(hr = CoInitializeEx(NULL, COINIT_MULTITHREADED));
+    CHECK_HR(hr = MFStartup(MF_VERSION));
+
+    // Configure the media type that the Sample Grabber will receive.
+    // Setting the major and subtype is usually enough for the topology loader
+    // to resolve the topology.
+
+    CHECK_HR(hr = MFCreateMediaType(&pType));
+    CHECK_HR(hr = pType->SetGUID(MF_MT_MAJOR_TYPE, MFMediaType_Video));
+    CHECK_HR(hr = pType->SetGUID(MF_MT_SUBTYPE, MFVideoFormat_I420));
+
+    // Create the sample grabber sink.
+    CHECK_HR(hr = SampleGrabberCB::CreateInstance(&pCallback));
+    CHECK_HR(hr = MFCreateSampleGrabberSinkActivate(pType, pCallback, &m_spSinkActivate));
+
+    // To run as fast as possible, set this attribute (requires Windows 7):
+    CHECK_HR(hr = m_spSinkActivate->SetUINT32(MF_SAMPLEGRABBERSINK_IGNORE_CLOCK, TRUE));
+
+    // Create the Media Session.
+    CHECK_HR(hr = MFCreateMediaSession(NULL, &m_spSession));
+
+    CHECK_HR(hr = enumVideoDevices());
+
+    CHECK_HR(hr = setupVideoDevice());
+
+    CHECK_HR(hr = setupMfSession());
+    
+done:    
+    SafeRelease(&pCallback);
+    SafeRelease(&pType);
+    return hr;
+}
+
+HRESULT CMFCamCapture::setupMfSession()
 {
     HRESULT hr = S_OK;
-    CHECK_HR(hr = CreateVideoDeviceSource(ppSource)); 
-    CHECK_HR(hr = ChooseCaptureFormats(*ppSource));    
+    IMFTopology *pTopology = NULL;
+    
+    // Create the topology.
+    CHECK_HR(hr = CreateTopology(m_spSource, m_spSinkActivate, &pTopology));
+    CHECK_HR(hr = m_spSession->SetTopology(0, pTopology));
+
+done:
+    SafeRelease(&pTopology);
+    return hr;
+}
+
+HRESULT CMFCamCapture::setupVideoDevice()
+{
+    HRESULT hr = S_OK;
+
+    if ((size_t)m_videoDeviceId >= m_deviceActivateObjects.size()) {
+        hr = E_FAIL;
+        goto done;
+    }
+
+    // activate
+    m_deviceActivateObjects[m_videoDeviceId]->ActivateObject(IID_PPV_ARGS(&m_spSource));
+    if (FAILED(hr)) {
+        goto done;
+    }
+
+    CHECK_HR(hr = chooseCaptureFormats());
 
 done:
     return hr;
 }
 
-HRESULT CreateVideoDeviceSource(IMFMediaSource **ppSource)
+HRESULT CMFCamCapture::enumVideoDevices()
 {
-    *ppSource = NULL;
-
-    IMFMediaSource *pSource = NULL;
     IMFAttributes *pAttributes = NULL;
     IMFActivate **ppDevices = NULL;
 
@@ -51,27 +124,22 @@ HRESULT CreateVideoDeviceSource(IMFMediaSource **ppSource)
         goto done;
     }
 
-    // Create the media source object.
-    hr = ppDevices[0]->ActivateObject(IID_PPV_ARGS(&pSource));
-    if (FAILED(hr)) {
-        goto done;
+    // cache the devices.
+    m_deviceActivateObjects.clear();
+    for (DWORD i = 0; i < count; i++) {
+        m_deviceActivateObjects.push_back(CComPtr<IMFActivate>(ppDevices[i]));
     }
-
-    *ppSource = pSource;
-    (*ppSource)->AddRef();
-
+    
 done:
     SafeRelease(&pAttributes);
-
     for (DWORD i = 0; i < count; i++) {
         SafeRelease(&ppDevices[i]);
     }
     CoTaskMemFree(ppDevices);
-    SafeRelease(&pSource);
     return hr;
 }
 
-HRESULT ChooseCaptureFormats(IMFMediaSource *pSource)
+HRESULT CMFCamCapture::chooseCaptureFormats()
 {
     IMFPresentationDescriptor *pPD = NULL;
     IMFStreamDescriptor *pSD = NULL;
@@ -79,7 +147,7 @@ HRESULT ChooseCaptureFormats(IMFMediaSource *pSource)
     IMFMediaType *pType = NULL;
     DWORD i;
 
-    HRESULT hr = pSource->CreatePresentationDescriptor(&pPD);
+    HRESULT hr = m_spSource->CreatePresentationDescriptor(&pPD);
     if (FAILED(hr)) {
         goto done;
     }
@@ -107,12 +175,14 @@ HRESULT ChooseCaptureFormats(IMFMediaSource *pSource)
             goto done;
         }
 
-        /*LogMediaType(pType);
-        OutputDebugString(L"\n");*/
-        bool found = SelectMediaType(pSource, pType);
-        SafeRelease(&pType);
+        bool found = selectMediaType(m_spSource, pType);
         if (found) {
-            hr = SetDeviceFormat(pSource, i);
+            LogMediaType(pType);
+            OutputDebugString(L"\n");
+        }
+        SafeRelease(&pType);
+        if (found) {            
+            hr = SetDeviceFormat(m_spSource, i);
             break;
         }
     }
@@ -129,7 +199,7 @@ done:
     return hr;
 }
 
-bool SelectMediaType(IMFMediaSource *pSource, IMFMediaType *pType)
+bool CMFCamCapture::selectMediaType(IMFMediaSource *pSource, IMFMediaType *pType)
 {
     UINT32 count = 0;
     UINT32 found = 0;
@@ -166,8 +236,10 @@ bool SelectMediaType(IMFMediaSource *pSource, IMFMediaType *pType)
             }
         }
         else if (guid == MF_MT_SUBTYPE) {
-            if (*var.puuid == MFVideoFormat_RGB24 || *var.puuid == MFVideoFormat_I420 ||
-                *var.puuid == MFVideoFormat_IYUV) {
+            if (*var.puuid == MFVideoFormat_I420 ||
+                *var.puuid == MFVideoFormat_IYUV /*||
+                *var.puuid == MFVideoFormat_RGB24*/
+                ) {
                 found |= 4;
             }
         }
@@ -182,40 +254,81 @@ bool SelectMediaType(IMFMediaSource *pSource, IMFMediaType *pType)
     return false;
 }
 
-HRESULT SetDeviceFormat(IMFMediaSource *pSource, DWORD dwFormatIndex)
+void CMFCamCapture::runSession()
 {
-    IMFPresentationDescriptor *pPD = NULL;
-    IMFStreamDescriptor *pSD = NULL;
-    IMFMediaTypeHandler *pHandler = NULL;
-    IMFMediaType *pType = NULL;
+    IMFMediaEvent *pEvent = NULL;
+    PROPVARIANT var;
+    PropVariantInit(&var);
+    
+    HRESULT hr = S_OK;
+    CHECK_HR(hr = m_spSession->Start(&GUID_NULL, &var));
 
-    HRESULT hr = pSource->CreatePresentationDescriptor(&pPD);
-    if (FAILED(hr)) {
-        goto done;
+    while (1) {
+
+        std::unique_lock<std::mutex> stateDataLock(m_stateDataMutex, std::defer_lock_t());
+        stateDataLock.lock();
+        if (std::this_thread::get_id() != m_captureThread.get_id()) {
+            break;
+        }
+        stateDataLock.unlock();
+
+        HRESULT hrStatus = S_OK;
+        MediaEventType met;
+
+        CHECK_HR(hr = m_spSession->GetEvent(0, &pEvent));
+        CHECK_HR(hr = pEvent->GetStatus(&hrStatus));
+        CHECK_HR(hr = pEvent->GetType(&met));
+
+        if (FAILED(hrStatus)) {
+            // printf("Session error: 0x%x (event id: %d)\n", hrStatus, met);
+            hr = hrStatus;
+            goto done;
+        }
+        if (met == MESessionEnded) {
+            break;
+        }
+        SafeRelease(&pEvent);
     }
-
-    BOOL fSelected;
-    hr = pPD->GetStreamDescriptorByIndex(0, &fSelected, &pSD);
-    if (FAILED(hr)) {
-        goto done;
-    }
-
-    hr = pSD->GetMediaTypeHandler(&pHandler);
-    if (FAILED(hr)) {
-        goto done;
-    }
-
-    hr = pHandler->GetMediaTypeByIndex(dwFormatIndex, &pType);
-    if (FAILED(hr)) {
-        goto done;
-    }
-
-    hr = pHandler->SetCurrentMediaType(pType);
 
 done:
-    SafeRelease(&pPD);
-    SafeRelease(&pSD);
-    SafeRelease(&pHandler);
-    SafeRelease(&pType);
-    return hr;
+    PropVariantClear(&var);
+    SafeRelease(&pEvent);
+}
+
+HRESULT CMFCamCapture::start()
+{
+    std::unique_lock<std::mutex> stateDataLock(m_stateDataMutex);
+
+    if (m_captureThread.get_id() != std::thread::id()) {
+        // thread already running.
+        return E_FAIL;
+    }
+    std::thread newThread([this]() { runSession(); });
+    m_captureThread.swap(newThread);    
+    return S_OK;
+}
+
+HRESULT CMFCamCapture::stop()
+{
+    std::unique_lock<std::mutex> stateDataLock(m_stateDataMutex, std::defer_lock_t());
+    stateDataLock.lock();
+    // Check if the callback thread is running.
+    if (m_captureThread.get_id() == std::thread::id()) {
+        return E_FAIL;
+    }
+
+    // Discard current callback thread. 
+    // Attach it to a temporary local "thread" variable, signal it to stop and then if it is 
+    // still exetuting wait unitl it finishes.
+    std::thread stoppedThread;
+    m_captureThread.swap(stoppedThread);
+    
+    stateDataLock.unlock();
+
+    m_spSession->Stop();
+
+    if (stoppedThread.joinable()) {
+        stoppedThread.join();
+    }
+    return S_OK;
 }

@@ -24,6 +24,9 @@
     <ClCompile Include="mfdebug.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="mfutils.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="capture.h">

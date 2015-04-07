@@ -8,37 +8,43 @@ bool compareLayerDepth(LayerImage &p1, LayerImage &p2)
     return p1.depth > p2.depth;
 }
 
-BOOL CPainter::Init(DWORD width, DWORD height, HWND hwnd)
+void createCompatibleDIB(DWORD width, DWORD height, HWND hwnd, DWORD compression, DWORD bpp,
+                         HDC *pdc, HBITMAP *pbmp, PixelMap *pMap)
 {
     BYTE *pCanvas;
-    
-    m_bmi.bmiHeader.biSize = sizeof (m_bmi.bmiHeader);
-    m_bmi.bmiHeader.biWidth = width;
-    m_bmi.bmiHeader.biHeight = height;
-    m_bmi.bmiHeader.biPlanes = 1;
-    m_bmi.bmiHeader.biBitCount = 32;
-    m_bmi.bmiHeader.biCompression = BI_RGB;
-    m_bmi.bmiHeader.biSizeImage = 0;
-    m_bmi.bmiHeader.biClrUsed = 0;
-    m_bmi.bmiHeader.biClrImportant = 0;
-    HDC hdc = GetDC(hwnd);
-    m_cdc = CreateCompatibleDC(hdc);
-    m_hbmp = CreateDIBSection(hdc, &m_bmi, DIB_RGB_COLORS, (void**)&pCanvas, NULL, 0);
-    SelectObject(m_cdc, m_hbmp);
+    BITMAPINFO bmi;
 
-    // save canvas.
-    memset(pCanvas, 0, width * height * m_bmi.bmiHeader.biBitCount / 8);
-    m_canvas.pixels = pCanvas;
-    m_canvas.width = width;
-    m_canvas.height = height;
-    m_canvas.format = ARGB32;
-    m_canvas.stride = width * 4;
-    m_canvas.bpp = 32;
+    bmi.bmiHeader.biSize = sizeof (bmi.bmiHeader);
+    bmi.bmiHeader.biWidth = width;
+    bmi.bmiHeader.biHeight = height;
+    bmi.bmiHeader.biPlanes = 1;
+    bmi.bmiHeader.biBitCount = (WORD)bpp;
+    bmi.bmiHeader.biCompression = compression;
+    bmi.bmiHeader.biSizeImage = 0;
+    bmi.bmiHeader.biClrUsed = 0;
+    bmi.bmiHeader.biClrImportant = 0;
+    HDC hdc = GetDC(hwnd);    
+    *pdc = CreateCompatibleDC(hdc);
+    *pbmp = CreateDIBSection(hdc, &bmi, DIB_RGB_COLORS, (void**)&pCanvas, NULL, 0);
+    SelectObject(*pdc, *pbmp);
 
-    loadLayers();
+    // save canvas
+    memset(pCanvas, 0, width * height * bmi.bmiHeader.biBitCount / 8);
+    pMap->pixels = pCanvas;
+    pMap->width = width;
+    pMap->height = height;
+    ASSERT(compression == BI_RGB);
+    pMap->format = (bpp == 32) ? ARGB32 : RGB24;
+    pMap->stride = width * (bpp >> 3);
+    pMap->bpp = bpp;
 
     DeleteDC(hdc);
+}
 
+BOOL CPainter::Init(DWORD width, DWORD height, HWND hwnd)
+{
+    createCompatibleDIB(width, height, hwnd, BI_RGB, 32, &m_cdc, &m_hbmp, &m_canvas);
+    loadLayers();
     return TRUE;
 }
 
@@ -127,6 +133,67 @@ void CBlender::blendLayers(std::vector<LayerImage>& layers, PixelMap *pDstImg, c
         COORD shift = getShift(layer.depth, cameraShift);
         blendSingleLayer(&layer.img, shift, pDstImg);        
     }
+}
+
+CTracker::~CTracker()
+{
+    DeleteDC(m_dc);
+    DeleteObject(m_hBmp);
+}
+
+HRESULT CTracker::initialize(int width, int height, HWND hWnd)
+{
+    HRESULT hr = S_OK;
+    CLSID uuid;
+    createCompatibleDIB(width, height, hWnd, BI_RGB, 24, &m_dc, &m_hBmp, &m_map);
+    m_hwnd = hWnd;
+
+    hr = m_capture.init();
+    if (FAILED(hr)) {
+        goto done;
+    }
+    m_capture.setSampleCallback(createSampleProcessCallbackFunc());
+    m_width = m_capture.getCaptureWidth();
+    m_height = m_capture.getCaptureHeight();
+    uuid = m_capture.getCaptureFormat();
+    if (uuid == MFVideoFormat_RGB24) {
+        m_format = RGB24;
+        m_bpp = 24;
+    } else {
+        // todo: add YUV support.
+        ASSERT(0);
+    }
+
+done:
+    return hr;
+}
+
+HRESULT CTracker::start()
+{
+    return m_capture.start();
+}
+
+HRESULT CTracker::stop()
+{
+    return m_capture.stop();
+}
+
+void CTracker::detectFace(const BYTE * pSampleBuffer, DWORD dwSampleSize)
+{
+    //ASSERT(dwSampleSize == m_width * m_height * (m_bpp >> 3));
+    
+    // paint to canvas.
+    memcpy(m_map.pixels, pSampleBuffer, dwSampleSize);
+    RECT rect = {0, 0, m_width, m_height};
+    InvalidateRect(m_hwnd, &rect, TRUE);
+}
+
+const SampleProcessFunc CTracker::createSampleProcessCallbackFunc()
+{
+    return SampleProcessFunc(
+        [this](const BYTE * sample, DWORD size) {
+        detectFace(sample, size);
+    });
 }
 
 }

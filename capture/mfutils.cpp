@@ -132,6 +132,7 @@ HRESULT SetDeviceFormat(IMFMediaSource *pSource, DWORD dwFormatIndex)
     }
 
     hr = pHandler->SetCurrentMediaType(pType);
+    LogMediaType(pType);
 
 done:
     SafeRelease(&pPD);

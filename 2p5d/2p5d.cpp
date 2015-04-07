@@ -9,9 +9,10 @@
 
 #define MAX_LOADSTRING 100
 #define TIMER_ID 0
+#define TIMER_ID2 1
 
-#define TRACKER_WIDTH  300
-#define TRACKER_HEIGHT 300
+#define TRACKER_WIDTH  640
+#define TRACKER_HEIGHT 480
 
 // Global Variables:
 HINSTANCE hInst;								// current instance
@@ -31,6 +32,7 @@ LRESULT CALLBACK	TrackerWinProc(HWND, UINT, WPARAM, LPARAM);
 INT_PTR CALLBACK	About(HWND, UINT, WPARAM, LPARAM);
 
 Parallax::CPainter g_painter;
+Parallax::CTracker g_tracker;
 static const int g_width = 1280;
 static const int g_height = 720;
 static const int g_fps = 30;
@@ -189,11 +191,16 @@ BOOL InitTrackerInstance(HINSTANCE hInstance, int nCmdShow)
     if (!hWnd) {
         return FALSE;
     }
-
+    if (FAILED(g_tracker.initialize(TRACKER_WIDTH, TRACKER_HEIGHT, hWnd))) {
+        ::MessageBox(hWnd, L"Error intializing camera.", L"Tracker Error", MB_OK);
+        return FALSE;
+    }
+    
     ShowWindow(hWnd, nCmdShow);
     UpdateWindow(hWnd);
-
     hwndTracker = hWnd;
+    g_tracker.start();
+    SetTimer(hWnd, TIMER_ID2, 1000 / g_fps, 0);
 
     return TRUE;
 }
@@ -289,15 +296,17 @@ LRESULT CALLBACK TrackerWinProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM l
 
     switch (message) {
     case WM_CREATE:
-
         return DefWindowProc(hWnd, message, wParam, lParam);
         break;
     case WM_PAINT:
         hdc = BeginPaint(hWnd, &ps);
-        
+        BitBlt(hdc, 0, 0, TRACKER_WIDTH, TRACKER_HEIGHT, g_tracker.m_dc, 0, 0, SRCCOPY);
         EndPaint(hWnd, &ps);
         break;
-
+    case WM_ERASEBKGND:
+        // This repaints the whole client background, which may cause flickering.
+        // Ignore the message since we're painting the whole client area anyway.
+        break;
     case WM_LBUTTONDOWN:
     case WM_MOUSEMOVE:
         if (wParam == MK_LBUTTON) 
@@ -313,7 +322,14 @@ LRESULT CALLBACK TrackerWinProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM l
         break;
 
     case WM_DESTROY:
+        g_tracker.stop();
         PostQuitMessage(0);
+        break;
+    case WM_TIMER:
+        /*{
+            RECT rect = {0, 0, TRACKER_WIDTH, TRACKER_HEIGHT};
+            InvalidateRect(hWnd, &rect, TRUE);
+        }*/
         break;
     default:
         return DefWindowProc(hWnd, message, wParam, lParam);

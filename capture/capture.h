@@ -82,12 +82,10 @@ public:
     HRESULT start();
     HRESULT stop();
 
-    void setSampleCallback(SampleProcessFunc callback)
-    {
-        if (m_spSampleGrabber) {
-            m_spSampleGrabber->setSampleProcessCallback(callback);
-        }
-    }
+    void setSampleCallback(SampleProcessFunc callback);
+    DWORD getCaptureWidth() const { return m_captureWidth; }
+    DWORD getCaptureHeight() const { return m_captureHeight; }
+    CLSID getCaptureFormat() const { return m_captureFormat; }
 
 private:
     HRESULT enumVideoDevices();
@@ -100,6 +98,9 @@ private:
     
 private:
     UINT m_videoDeviceId;
+    UINT m_captureWidth;
+    UINT m_captureHeight;
+    CLSID m_captureFormat;
 
     mutable std::mutex m_stateDataMutex;
     std::thread m_captureThread;

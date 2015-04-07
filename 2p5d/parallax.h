@@ -1,10 +1,16 @@
 #include "stdafx.h"
 
+#define ASSERT assert
+
 namespace Parallax  {
 
 enum ColorFormat {
+    UNKNOWN = 0,
     GRAY8,
+    I420,
+    IYUV  = I420,
     ARGB32,
+    RGB24,
 };
 
 struct PixelMap {
@@ -110,7 +116,6 @@ public:
 	HDC m_cdc;
     	
 private:
-    BITMAPINFO m_bmi;
     HBITMAP m_hbmp;
 	PixelMap m_canvas;
     std::vector<GdiPlusBmp> m_bitmaps;
@@ -119,6 +124,38 @@ private:
     COORD m_cameraShift;
 
     CBlender m_blender;
+};
+
+class CTracker {
+public:
+    CTracker() :
+        m_hBmp(NULL), m_dc(NULL),
+        m_width(0), m_height(0), m_format(UNKNOWN),
+        m_bpp(0), m_hwnd(0)
+    {}
+    ~CTracker();
+
+    HRESULT initialize(int width, int height, HWND hWnd);
+    HRESULT start();
+    HRESULT stop();
+
+private:
+    const SampleProcessFunc createSampleProcessCallbackFunc();
+    void detectFace(const BYTE * pSampleBuffer, DWORD dwSampleSize);
+
+public:
+    HDC m_dc;
+private:
+    HBITMAP m_hBmp;
+    PixelMap m_map;
+    HWND m_hwnd;
+    
+    // capture.
+    CMFCamCapture m_capture;
+    DWORD m_width;
+    DWORD m_height;
+    ColorFormat m_format;
+    DWORD m_bpp;
 };
 
 }

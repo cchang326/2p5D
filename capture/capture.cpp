@@ -32,7 +32,7 @@ HRESULT CMFCamCapture::init()
 
     CHECK_HR(hr = MFCreateMediaType(&pType));
     CHECK_HR(hr = pType->SetGUID(MF_MT_MAJOR_TYPE, MFMediaType_Video));
-    CHECK_HR(hr = pType->SetGUID(MF_MT_SUBTYPE, MFVideoFormat_I420));
+    CHECK_HR(hr = pType->SetGUID(MF_MT_SUBTYPE, MFVideoFormat_RGB24));
 
     // Create the sample grabber sink.
     CHECK_HR(hr = SampleGrabberCB::CreateInstance(&m_spSampleGrabber));
@@ -201,6 +201,8 @@ bool CMFCamCapture::selectMediaType(IMFMediaSource *pSource, IMFMediaType *pType
 {
     UINT32 count = 0;
     UINT32 found = 0;
+    UINT32 uHigh = 0, uLow = 0;
+    CLSID uuid;
     UINT32 i;
 
     HRESULT hr = pType->GetCount(&count);
@@ -222,7 +224,6 @@ bool CMFCamCapture::selectMediaType(IMFMediaSource *pSource, IMFMediaType *pType
             goto done;
         }
         if (guid == MF_MT_FRAME_SIZE) {
-            UINT32 uHigh = 0, uLow = 0;
             Unpack2UINT32AsUINT64(var.uhVal.QuadPart, &uHigh, &uLow);
             if (uHigh == 640 && (uLow == 480 || uLow == 360)) {
                 found |= 1;
@@ -235,9 +236,10 @@ bool CMFCamCapture::selectMediaType(IMFMediaSource *pSource, IMFMediaType *pType
         }
         else if (guid == MF_MT_SUBTYPE) {
             if (*var.puuid == MFVideoFormat_I420 ||
-                *var.puuid == MFVideoFormat_IYUV /*||
-                *var.puuid == MFVideoFormat_RGB24*/
+                *var.puuid == MFVideoFormat_IYUV ||
+                *var.puuid == MFVideoFormat_RGB24
                 ) {
+                uuid = *var.puuid;
                 found |= 4;
             }
         }
@@ -245,6 +247,10 @@ bool CMFCamCapture::selectMediaType(IMFMediaSource *pSource, IMFMediaType *pType
         PropVariantClear(&var);
 
         if (found == 7) {
+            m_captureHeight = uLow;
+            m_captureWidth = uHigh;
+            m_captureFormat = uuid;
+
             return true;
         }
     }
@@ -263,12 +269,12 @@ void CMFCamCapture::runSession()
 
     while (1) {
 
-        std::unique_lock<std::mutex> stateDataLock(m_stateDataMutex, std::defer_lock_t());
-        stateDataLock.lock();
-        if (std::this_thread::get_id() != m_captureThread.get_id()) {
-            break;
-        }
-        stateDataLock.unlock();
+        //std::unique_lock<std::mutex> stateDataLock(m_stateDataMutex, std::defer_lock_t());
+        //stateDataLock.lock();
+        //if (std::this_thread::get_id() != m_captureThread.get_id()) {
+        //    break;
+        //}
+        //stateDataLock.unlock();
 
         HRESULT hrStatus = S_OK;
         MediaEventType met;
@@ -278,11 +284,11 @@ void CMFCamCapture::runSession()
         CHECK_HR(hr = pEvent->GetType(&met));
 
         if (FAILED(hrStatus)) {
-            // printf("Session error: 0x%x (event id: %d)\n", hrStatus, met);
+           DBGMSG(L"Session error: 0x%x (event id: %d)\n", hrStatus, met);
             hr = hrStatus;
             goto done;
         }
-        if (met == MESessionEnded) {
+        if (met == MESessionEnded || met == MESessionStopped) {
             break;
         }
         SafeRelease(&pEvent);
@@ -320,13 +326,19 @@ HRESULT CMFCamCapture::stop()
     // still exetuting wait unitl it finishes.
     std::thread stoppedThread;
     m_captureThread.swap(stoppedThread);
+    m_spSession->Stop();
     
     stateDataLock.unlock();
-
-    m_spSession->Stop();
 
     if (stoppedThread.joinable()) {
         stoppedThread.join();
     }
     return S_OK;
+}
+
+void CMFCamCapture::setSampleCallback(SampleProcessFunc callback)
+{
+    if (m_spSampleGrabber) {
+        m_spSampleGrabber->setSampleProcessCallback(callback);
+    }
 }

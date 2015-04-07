@@ -102,9 +102,6 @@ private:
     UINT m_captureHeight;
     CLSID m_captureFormat;
 
-    mutable std::mutex m_stateDataMutex;
-    std::thread m_captureThread;
-
     CComPtr<SampleGrabberCB> m_spSampleGrabber;
     CComPtr<IMFMediaSession> m_spSession;  
     CComPtr<IMFMediaSource> m_spSource;

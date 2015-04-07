@@ -260,22 +260,30 @@ bool CMFCamCapture::selectMediaType(IMFMediaSource *pSource, IMFMediaType *pType
 
 void CMFCamCapture::runSession()
 {
-    IMFMediaEvent *pEvent = NULL;
     PROPVARIANT var;
     PropVariantInit(&var);
     
     HRESULT hr = S_OK;
     CHECK_HR(hr = m_spSession->Start(&GUID_NULL, &var));
 
+done:
+    PropVariantClear(&var);
+}
+
+HRESULT CMFCamCapture::start()
+{
+    runSession();
+    return S_OK;
+}
+
+HRESULT CMFCamCapture::stop()
+{
+    HRESULT hr = S_OK;
+    IMFMediaEvent *pEvent = NULL;
+    m_spSession->Stop();
+    
+    // wait for session to finish.
     while (1) {
-
-        //std::unique_lock<std::mutex> stateDataLock(m_stateDataMutex, std::defer_lock_t());
-        //stateDataLock.lock();
-        //if (std::this_thread::get_id() != m_captureThread.get_id()) {
-        //    break;
-        //}
-        //stateDataLock.unlock();
-
         HRESULT hrStatus = S_OK;
         MediaEventType met;
 
@@ -284,7 +292,7 @@ void CMFCamCapture::runSession()
         CHECK_HR(hr = pEvent->GetType(&met));
 
         if (FAILED(hrStatus)) {
-           DBGMSG(L"Session error: 0x%x (event id: %d)\n", hrStatus, met);
+            DBGMSG(L"Session error: 0x%x (event id: %d)\n", hrStatus, met);
             hr = hrStatus;
             goto done;
         }
@@ -293,47 +301,8 @@ void CMFCamCapture::runSession()
         }
         SafeRelease(&pEvent);
     }
-
-done:
-    PropVariantClear(&var);
-    SafeRelease(&pEvent);
-}
-
-HRESULT CMFCamCapture::start()
-{
-    std::unique_lock<std::mutex> stateDataLock(m_stateDataMutex);
-
-    if (m_captureThread.get_id() != std::thread::id()) {
-        // thread already running.
-        return E_FAIL;
-    }
-    std::thread newThread([this]() { runSession(); });
-    m_captureThread.swap(newThread);    
-    return S_OK;
-}
-
-HRESULT CMFCamCapture::stop()
-{
-    std::unique_lock<std::mutex> stateDataLock(m_stateDataMutex, std::defer_lock_t());
-    stateDataLock.lock();
-    // Check if the callback thread is running.
-    if (m_captureThread.get_id() == std::thread::id()) {
-        return E_FAIL;
-    }
-
-    // Discard current callback thread. 
-    // Attach it to a temporary local "thread" variable, signal it to stop and then if it is 
-    // still exetuting wait unitl it finishes.
-    std::thread stoppedThread;
-    m_captureThread.swap(stoppedThread);
-    m_spSession->Stop();
-    
-    stateDataLock.unlock();
-
-    if (stoppedThread.joinable()) {
-        stoppedThread.join();
-    }
-    return S_OK;
+    done:
+    return hr;
 }
 
 void CMFCamCapture::setSampleCallback(SampleProcessFunc callback)

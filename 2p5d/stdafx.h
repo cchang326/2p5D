@@ -31,3 +31,4 @@ using namespace Gdiplus;
 #include <inttypes.h>
 
 #include "capture.h"
+#include "FaceDetectorSrc.h"

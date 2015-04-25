@@ -90,6 +90,14 @@ void CPainter::updateCameraPos(int shiftX, int shiftY)
     m_cameraShift = { shiftX, shiftY };
 }
 
+const SetCameraOffsetFunc CPainter::createCamPosUpdateCallbackFunc()
+{
+    return SetCameraOffsetFunc(
+        [this](int x, int y) {
+        updateCameraPos(x, y);
+    });
+}
+
 void CPainter::Draw()
 {
     m_blender.blendLayers(m_layers, &m_canvas, m_cameraShift);
@@ -139,6 +147,9 @@ CTracker::~CTracker()
 {
     DeleteDC(m_dc);
     DeleteObject(m_hBmp);
+    if (m_pFaceDetector) {
+        delete m_pFaceDetector;
+    }
 }
 
 HRESULT CTracker::initialize(int width, int height, HWND hWnd)
@@ -164,6 +175,19 @@ HRESULT CTracker::initialize(int width, int height, HWND hWnd)
         ASSERT(0);
     }
 
+    m_pFaceDetector = new CFaceDetector();
+    hr = m_pFaceDetector->InitializeInFrameSequenceMode();
+    if (FAILED(hr)) {
+        goto done;
+    }
+    m_pFaceDetector->EnableProfile(FALSE);
+    m_pFaceDetector->SetParam(1, 1.2f, 1, 50);
+    m_pFaceDetector->EnablePreColorFilter(TRUE);
+    m_pFaceDetector->SetMinScaleImageSize(600);
+    //m_pFaceDetector->SetInplaneLevel(E_INPLANE_LEVEL4);	//GS: Disable finding 90 degrees rotated faces
+    m_pFaceDetector->SetInplaneLevel(E_INPLANE_LEVEL0);
+    m_pFaceDetector->SetOptions(TRUE, TRUE); // single face
+
 done:
     return hr;
 }
@@ -182,6 +206,32 @@ void CTracker::detectFace(const BYTE * pSampleBuffer, DWORD dwSampleSize)
 {
     //ASSERT(dwSampleSize == m_width * m_height * (m_bpp >> 3));
     
+    // detect face
+    int facesFound = 0;
+    FaceBox faces[10];
+    if (m_pFaceDetector) {
+        RECT rcROI;        
+        FaceBox *pFaceBox = NULL;
+        rcROI.left = m_width / 20;
+        rcROI.right = m_width - m_width / 20;
+        rcROI.top = m_height / 20;
+        rcROI.bottom = m_height - m_height / 20;
+        m_pFaceDetector->DetectFace(m_width, m_height, pSampleBuffer, 3*m_width, 3, 1, FALSE, &rcROI, &facesFound, &pFaceBox);
+        if (facesFound > 0) {
+            memcpy(faces, pFaceBox, sizeof(FaceBox)* facesFound);
+            m_pFaceDetector->FreeFaceBox(pFaceBox);
+
+            RECT& faceRect = faces[0].rBox;
+            int x = m_width - (faceRect.left + faceRect.right) / 2;
+            int y = (faceRect.top + faceRect.bottom) / 2;
+            x -= m_width / 2;
+            y -= m_height / 2;
+            if (m_camOffsetCallback) {
+                m_camOffsetCallback(x, y);
+            }
+        }
+    }    
+
     // paint to canvas.
     memcpy(m_map.pixels, pSampleBuffer, dwSampleSize);
     RECT rect = {0, 0, m_width, m_height};

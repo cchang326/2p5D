@@ -62,6 +62,8 @@ int APIENTRY _tWinMain(_In_ HINSTANCE hInstance,
 		return FALSE;
 	}
 
+    g_tracker.SetCameraOffsetCallBackFunc(g_painter.createCamPosUpdateCallbackFunc());
+
 	hAccelTable = LoadAccelerators(hInstance, MAKEINTRESOURCE(IDC_MY2P5D));
 
 	// Main message loop:

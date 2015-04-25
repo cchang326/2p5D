@@ -49,6 +49,8 @@ struct GdiPlusBmp {
     BitmapData bmpData;
 };
 
+typedef std::function<void(int x, int y)> SetCameraOffsetFunc;
+
 class CBlender {
 public:
     CBlender():
@@ -103,6 +105,8 @@ public:
         GdiplusShutdown(m_gdiplusToken);
 	}
 
+    const SetCameraOffsetFunc createCamPosUpdateCallbackFunc();
+
     BOOL Init(DWORD width, DWORD height, HWND hwnd);
 
     void updateCameraPos(int shiftX, int shiftY);
@@ -129,11 +133,16 @@ private:
 class CTracker {
 public:
     CTracker() :
-        m_hBmp(NULL), m_dc(NULL),
+        m_hBmp(NULL), m_dc(NULL), m_camOffsetCallback(nullptr),
         m_width(0), m_height(0), m_format(UNKNOWN),
-        m_bpp(0), m_hwnd(0)
+        m_bpp(0), m_hwnd(0), m_pFaceDetector(NULL)
     {}
     ~CTracker();
+
+    void SetCameraOffsetCallBackFunc(SetCameraOffsetFunc func)
+    {
+        m_camOffsetCallback = func;
+    }
 
     HRESULT initialize(int width, int height, HWND hWnd);
     HRESULT start();
@@ -146,6 +155,11 @@ private:
 public:
     HDC m_dc;
 private:
+    // parallax cam offset
+    SetCameraOffsetFunc m_camOffsetCallback;
+    mutable std::mutex m_stateDataMutex;
+    
+    // webcam preview
     HBITMAP m_hBmp;
     PixelMap m_map;
     HWND m_hwnd;
@@ -156,6 +170,9 @@ private:
     DWORD m_height;
     ColorFormat m_format;
     DWORD m_bpp;
+
+    // face detector
+    CFaceDetector* m_pFaceDetector;
 };
 
 }
